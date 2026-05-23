@@ -1,0 +1,10 @@
+{
+  "name": "ADHD Friendly Interview Prep",
+  "description": "An interactive, structured interview practice tool designed specifically for individuals with ADHD and anxiety. Includes audio recording, feedback on content & delivery, and interactive guided focus prep.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
