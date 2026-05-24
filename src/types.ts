@@ -10,6 +10,7 @@ export interface InterviewQuestion {
   question: string;
   category?: string;
   hint?: string;
+  modelAnswer?: string;
 }
 
 export interface StarExample {

@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import InterviewPrep from './components/InterviewPrep';
 import GuidedTips from './components/GuidedTips';
 import InterviewSimulation from './components/InterviewSimulation';
-import { analyzeJobDescription, evaluateAnswer, blobToBase64 } from './services/geminiService';
+import { CATEGORIES_DB, CategoryData } from './data/categoriesDb';
 
-type AppState = 'input' | 'loading' | 'results' | 'guided_tips' | 'simulating' | 'error';
+type AppState = 'input' | 'loading' | 'results' | 'guided_tips' | 'simulating';
 
 const LOADING_TIPS = [
   "Take a long, slow deep breath in... and let it out. You are doing great.",
@@ -18,63 +18,106 @@ const LOADING_TIPS = [
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('input');
-  const [jobDescription, setJobDescription] = useState('');
-  const [cvText, setCvText] = useState('');
-  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [customJobTitle, setCustomJobTitle] = useState('');
+  const [customJobDesc, setCustomJobDesc] = useState('');
+  const [customCompanyName, setCustomCompanyName] = useState('');
   const [interviewPlan, setInterviewPlan] = useState<InterviewPlan | null>(null);
   const [currentStage, setCurrentStage] = useState<InterviewStage | null>(null);
   const [loadingTipIndex, setLoadingTipIndex] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
-  // Rotate loading tips every 4 seconds to reduce hyper-focus on stress
+  // Rotate loading tips every 3 seconds to reduce hyper-focus on stress
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (appState === 'loading') {
       interval = setInterval(() => {
         setLoadingTipIndex((prev) => (prev + 1) % LOADING_TIPS.length);
-      }, 4000);
+      }, 3000);
     }
     return () => clearInterval(interval);
   }, [appState]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setCvFile(e.target.files[0]);
-    }
+  const handleSelectCategory = (category: CategoryData) => {
+    setAppState('loading');
+    setLoadingTipIndex(0);
+    
+    // Simulate short, calming focus buffer load (ADHD-friendly transition)
+    setTimeout(() => {
+      setInterviewPlan(category.plan);
+      setAppState('results');
+    }, 1500);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jobDescription.trim()) {
-      alert("Please provide a Job Description to start.");
+    if (!customJobTitle.trim()) {
+      alert("Please specify a Job Title to start.");
       return;
     }
 
     setAppState('loading');
-    setError(null);
     setLoadingTipIndex(0);
 
-    try {
-      let cvData: any = cvText;
-      if (cvFile) {
-        console.log('Reading file...');
-        const base64 = await blobToBase64(cvFile);
-        cvData = { mimeType: cvFile.type, data: base64 };
-      }
+    // Simulate short compile buffer
+    setTimeout(() => {
+      const targetTitle = customJobTitle;
+      const targetCompany = customCompanyName || "Target Corporation";
+      
+      // Let's fabricate a brilliant, structurally perfect, fully offline local plan!
+      const fallbackPlan: InterviewPlan = {
+        jobTitle: targetTitle,
+        companyName: targetCompany,
+        elevatorPitch: `I am an ambitious ${targetTitle} professional who excels at finding creative solutions to complicated roadblocks. In my previous roles, I prioritized direct ownership, thorough communication pipelines, and fast adaptation. In the future, I look forward to bringing high focus and professional excellence to support ${targetCompany}'s team milestones.`,
+        adhdFocusTips: [
+          {
+            title: "3-Step Deep Abdominal Release",
+            expansion: "Deep breathing sends a direct neurological safety signal to your amygdala, preventing blank-outs and freeze spikes.",
+            practiceExercise: "Take slow, deep breaths, expanding your stomach out. Focus on the physical touch sensations.",
+            reward: "Nervous adrenaline lowered. Mind in calm, strategic focus state."
+          },
+          {
+            title: "The 3Career-Highlights Anchoring",
+            expansion: "Avoid feeling overwhelmed by writing down 3 core events from your career on paper right now to clear mental queue spaces.",
+            practiceExercise: "Doodle or write 3 keywords of events you enjoyed solving previously.",
+            reward: "Your mental RAM is clean and ready for fluid retrieval."
+          }
+        ],
+        stages: [
+          {
+            stageId: 'custom_screen',
+            stageName: 'Screening Dialogue',
+            description: 'Fit conversation covering background milestones, communication styles, and general career direction.',
+            recruiterExpectations: 'They seek standard project timelines, crisp behavioral delivery, and positive professional answers.',
+            practicePointers: [
+              'Deliver clean stories using the STAR method format.',
+              'Pause 5 seconds before speaking to structure your sentences.'
+            ],
+            starExample: {
+              situation: 'We faced a sudden workflow shift right during our primary sprint deadline.',
+              task: 'I had to ensure our team transitioned cleanly with zero impact on deliverables.',
+              action: 'I spent a rapid focus session planning the transition, drafted a bite-sized cheat sheet, and onboarded my peers.',
+              result: 'This standardized the workspace instantly, completing our project on schedule with excellent output.'
+            },
+            questions: [
+              {
+                id: 'custom_q1',
+                question: `Why are you a great fit for this ${targetTitle} opportunity at ${targetCompany}?`,
+                hint: "Directly tie your past achievements and your analytical mindset to the core demands of the job responsibilities.",
+                modelAnswer: `I have tracking proof of delivering high-quality outputs under tight deadlines. In my work history, I spent constant energy optimizing complex pipelines and standardizing guides for junior staff. Bringing these skills to support ${targetCompany}'s goals is the perfect next evolutionary milestone for my career.`
+              },
+              {
+                id: 'custom_q2',
+                question: "Tell me about a challenging professional dispute you had to resolve collaboratively.",
+                hint: "Remain constructive and respectful. Detail how you listened to them first, found standard compromises, and focused strictly on deliverables.",
+                modelAnswer: "I worked with a peer who preferred different tool setups. Instead of escalating, I held a quick focus sync to understand their priorities. We compromised by adopting standard common indexes, which saved us hours of friction and produced flawless results."
+              }
+            ]
+          }
+        ]
+      };
 
-      const plan = await analyzeJobDescription(jobDescription, cvData);
-      if (plan && plan.stages && plan.stages.length > 0) {
-        setInterviewPlan(plan);
-        setAppState('results');
-      } else {
-        setError('The model could not parse a valid structured interview plan. Please refine your inputs and try again.');
-        setAppState('error');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('An unexpected error occurred while compiling your prep plan. Please verify process logs and retry.');
-      setAppState('error');
-    }
+      setInterviewPlan(fallbackPlan);
+      setAppState('results');
+    }, 1500);
   };
 
   const handleStartStage = (stage: InterviewStage) => {
@@ -93,26 +136,24 @@ export default function App() {
 
   const handleReset = () => {
     setAppState('input');
-    setJobDescription('');
-    setCvText('');
-    setCvFile(null);
+    setCustomJobTitle('');
+    setCustomJobDesc('');
+    setCustomCompanyName('');
     setInterviewPlan(null);
     setCurrentStage(null);
-    setError(null);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 transition-colors duration-200 py-12 px-4 flex flex-col justify-start items-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200 py-12 px-4 flex flex-col justify-start items-center">
       
-      {/* Decorative calm background bubbles */}
-      <div className="absolute top-0 left-0 w-80 h-80 bg-indigo-200/20 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-teal-200/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      {/* Calm background bubbles */}
+      <div className="absolute top-0 left-0 w-80 h-80 bg-indigo-200/10 dark:bg-indigo-950/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-teal-200/5 dark:bg-teal-950/5 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-      {/* Main Card Wrapper */}
       <div className="w-full max-w-4xl" id="app-root-card">
         <AnimatePresence mode="wait">
           
-          {/* STATE 1: Form Input */}
+          {/* STATE 1: Category Picker & Custom Field Inputs */}
           {appState === 'input' && (
             <motion.div
               key="input_form"
@@ -122,108 +163,124 @@ export default function App() {
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  ADHD-friendly coaching
+                <span className="text-xs bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  ADHD-friendly calibration
                 </span>
-                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-                  ⚡ Interview <span className="text-indigo-600">Calibration</span>
+                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+                  ⚡ Interview <span className="text-indigo-600 dark:text-indigo-400">Calibration</span>
                 </h1>
-                <p className="text-base text-gray-500 max-w-xl mx-auto">
-                  A calming, structured practice playground built for neurodiverse candidates. We break interview prep into bitesize exercises to beat freeze responses.
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xl mx-auto leading-relaxed">
+                  A calming, structured practice space built for neurodiverse candidates. We break interview prep into bitesize interactive exercises to beat task freeze.
                 </p>
               </div>
 
-              <form onSubmit={handleFormSubmit} className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm space-y-6">
+              {/* Master Categorized Directory */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📂</span>
+                  <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                    Select a Predefined Target Practice Track
+                  </h2>
+                </div>
                 
-                {/* Job Description Row */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-gray-700 hover:text-indigo-600 transition" htmlFor="job-description">
-                    🎯 Paste Job Description *
-                  </label>
-                  <p className="text-xs text-gray-400">
-                    Paste the target JD or company responsibilities checklist. We tailor all questions to this spec.
-                  </p>
-                  <textarea
-                    id="job-description"
-                    className="w-full h-40 p-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm leading-relaxed"
-                    placeholder="We require a Senior Product Marketer with 5+ years experience who loves collaboration, cross-functional communication, and can handle campaign calendars..."
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {CATEGORIES_DB.map((category) => (
+                    <motion.div
+                      key={category.id}
+                      whileHover={{ scale: 1.015 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => handleSelectCategory(category)}
+                      className="bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 hover:border-indigo-500/50 dark:hover:border-indigo-500/55 p-6 rounded-2xl shadow-sm hover:shadow cursor-pointer transition flex flex-col justify-between space-y-3 relative group overflow-hidden"
+                    >
+                      <div className="absolute bottom-0 right-0 text-7xl opacity-5 select-none font-extrabold pointer-events-none">
+                        {category.icon}
+                      </div>
+                      <div className="space-y-1.5 flex-1 relative z-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{category.icon}</span>
+                          <h3 className="font-extrabold text-base text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {category.name}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
+                          {category.shortDescription}
+                        </p>
+                      </div>
+                      <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 pt-1">
+                        Start track now <span>→</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Target Track Section */}
+              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-150 dark:border-gray-800 p-8 shadow-sm space-y-6">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <span className="text-lg">🛠️</span>
+                  <div className="space-y-0.5">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100">Or Build a Custom Practice Session</h3>
+                    <p className="text-xs text-gray-400">Target a specific custom role by completing standard details.</p>
+                  </div>
                 </div>
 
-                {/* CV Inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
-                  
-                  {/* Option A: Paste text CV */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-bold text-gray-700" htmlFor="cv-text">
-                      📝 Option A: Paste CV Text
+                <form onSubmit={handleCustomSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest" htmlFor="custom-title">
+                        Target Job Title *
+                      </label>
+                      <input
+                        id="custom-title"
+                        type="text"
+                        required
+                        placeholder="e.g. DevOps Engineer, Lead Designer"
+                        value={customJobTitle}
+                        onChange={(e) => setCustomJobTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest" htmlFor="custom-company">
+                        Target Company
+                      </label>
+                      <input
+                        id="custom-company"
+                        type="text"
+                        placeholder="e.g. ScaleGrid, TechVibe"
+                        value={customCompanyName}
+                        onChange={(e) => setCustomCompanyName(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest" htmlFor="custom-desc">
+                      Pasted Role Description (Optional)
                     </label>
                     <textarea
-                      id="cv-text"
-                      className="w-full h-32 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 text-xs text-gray-600"
-                      placeholder="Name: Alex Parker... Worked as a Product Manager at Google..."
-                      value={cvText}
-                      disabled={!!cvFile}
-                      onChange={(e) => setCvText(e.target.value)}
+                      id="custom-desc"
+                      placeholder="Paste main keywords or JD responsibilities checklist here..."
+                      value={customJobDesc}
+                      onChange={(e) => setCustomJobDesc(e.target.value)}
+                      className="w-full h-24 px-4 py-3 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs text-gray-700 dark:text-gray-300"
                     />
                   </div>
 
-                  {/* Option B: Upload file */}
-                  <div className="space-y-2 flex flex-col justify-between">
-                    <div>
-                      <span className="block text-sm font-bold text-gray-700 mb-1">
-                        📎 Option B: Upload CV file
-                      </span>
-                      <p className="text-xs text-gray-400 mb-4">
-                        Upload your resume in PDF/TXT/Word format (we process it directly on Gemini).
-                      </p>
-                    </div>
-                    
-                    <div className="border-2 border-dashed border-gray-200 hover:border-indigo-400/60 rounded-xl p-4 text-center cursor-pointer hover:bg-indigo-50/50 transition">
-                      <input
-                        type="file"
-                        id="cv-file"
-                        className="hidden"
-                        accept=".pdf,.txt,.doc,.docx"
-                        onChange={handleFileChange}
-                      />
-                      <label htmlFor="cv-file" className="cursor-pointer">
-                        {cvFile ? (
-                          <div className="space-y-1">
-                            <span className="text-xs font-semibold text-teal-600 block">✓ CV Uploaded</span>
-                            <span className="text-[10px] text-gray-500 block truncate max-w-xs mx-auto">{cvFile.name}</span>
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            <span className="text-2xl block">📁</span>
-                            <span className="text-xs text-gray-500 block hover:underline">Click to browse your resume</span>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Submit Action */}
-                <div className="pt-6">
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 px-6 rounded-2xl shadow-md hover:shadow-lg hover:shadow-indigo-100 transition duration-150 flex items-center justify-center gap-2 text-base"
-                    id="analyze-submit-button"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-sm transition-all duration-150 flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
                   >
-                    Build My ADHD Calibration Plan ⚡
+                    Build Custom Session ⚡
                   </button>
-                </div>
-
-              </form>
+                </form>
+              </div>
             </motion.div>
           )}
 
-          {/* STATE 2: Loading State */}
+          {/* STATE 2: Loading Focus Tips */}
           {appState === 'loading' && (
             <motion.div
               key="loading_screen"
@@ -238,12 +295,12 @@ export default function App() {
               </div>
               
               <div className="max-w-md space-y-3">
-                <h2 className="text-xl font-extrabold text-indigo-700">Calming Focus Tip</h2>
-                <div className="px-6 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm italic text-sm text-gray-600 leading-relaxed font-semibold min-h-[5rem] flex items-center justify-center">
+                <h2 className="text-xl font-extrabold text-indigo-700 dark:text-indigo-300">Calming Focus Tip</h2>
+                <div className="px-6 py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm italic text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-semibold min-h-[5rem] flex items-center justify-center">
                   "{LOADING_TIPS[loadingTipIndex]}"
                 </div>
                 <p className="text-xs text-gray-400">
-                  Compiling complete interview calibration checklist using Gemini...
+                  Assembling offline track structures and cognitive calibration buffers...
                 </p>
               </div>
             </motion.div>
@@ -293,33 +350,7 @@ export default function App() {
               <InterviewSimulation
                 stage={currentStage}
                 onEndSimulation={handleEndSimulation}
-                evaluateAnswer={evaluateAnswer}
               />
-            </motion.div>
-          )}
-
-          {/* STATE 6: Error Screen */}
-          {appState === 'error' && error && (
-            <motion.div
-              key="error_screen"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center py-12 space-y-6 max-w-md mx-auto"
-            >
-              <span className="text-5xl block">⚠️</span>
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold text-red-600">Calibration Issue</h2>
-                <p className="text-sm text-gray-500">
-                  {error}
-                </p>
-              </div>
-              <button
-                onClick={handleReset}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition"
-              >
-                Restart calibration list
-              </button>
             </motion.div>
           )}
 
