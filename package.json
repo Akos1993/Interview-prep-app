@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server.ts",
-    "build": "vite build",
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "start": "node server.ts",
+    "start": "node dist/server.cjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "dotenv": "^17.4.2",
+    "esbuild": "^0.28.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
